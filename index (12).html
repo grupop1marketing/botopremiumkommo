@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0804">
+<title>BOTOPREMIUM — BRP Face</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #e2c47a;
+    --white: #ffffff;
+    --white-80: rgba(255,255,255,0.80);
+    --white-50: rgba(255,255,255,0.50);
+    --white-30: rgba(255,255,255,0.30);
+    --card-bg: rgba(20,18,16,0.55);
+    --card-border: rgba(255,255,255,0.14);
+    --card-hover: rgba(255,255,255,0.10);
+    --overlay: rgba(0,0,0,0.52);
+    --transition: 0.42s cubic-bezier(0.4,0,0.2,1);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+
+  html, body {
+    height: 100%; height: -webkit-fill-available;
+    overflow: hidden;
+    font-family: 'Jost', sans-serif;
+    background: #0a0804;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  #form-wrap { position: fixed; inset: 0; overflow: hidden; }
+
+  /* ── SLIDES ── */
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: calc(64px + var(--safe-top)) 20px calc(72px + var(--safe-bottom));
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--transition), transform var(--transition);
+    transform: translateY(48px);
+    overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .slide.active { opacity: 1; pointer-events: all; transform: translateY(0); }
+  .slide.exit-up { opacity: 0; transform: translateY(-48px); pointer-events: none; }
+  .slide.exit-down { opacity: 0; transform: translateY(48px); pointer-events: none; }
+  .slide-intro, .slide-final { justify-content: center; align-items: center; padding-top: 0; padding-bottom: 0; }
+
+  /* ── BACKGROUND ── */
+  .slide-bg {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    z-index: 0;
+  }
+  .slide-bg::after {
+    content: ''; position: absolute; inset: 0;
+    background: var(--overlay);
+  }
+
+  /* ── TODAS AS TELAS: centralização vertical e horizontal ── */
+  .slide { justify-content: center; align-items: center; }
+
+  /* ── LOGO ── */
+  .logo {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(12px + var(--safe-top)) 0 10px;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 100%);
+  }
+  .logo img { height: 30px; width: auto; object-fit: contain; }
+  body.intro-active .logo { display: none; }
+
+  /* ── PROGRESS ── */
+  .progress-bar { position: fixed; top: 0; left: 0; right: 0; height: 2px; background: rgba(255,255,255,0.08); z-index: 200; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); transition: width 0.5s cubic-bezier(0.4,0,0.2,1); }
+  body.intro-active .progress-bar { display: none; }
+
+  /* ── SLIDE CONTENT ── */
+  .slide-content {
+    position: relative; z-index: 10;
+    width: 100%; max-width: 480px;
+    display: flex; flex-direction: column; align-items: center;
+    padding-bottom: 8px;
+    margin-left: auto; margin-right: auto;
+  }
+
+  /* ── INTRO ── */
+  .intro-content {
+    position: relative; z-index: 10;
+    width: 100%; max-width: 480px;
+    padding: 0 24px;
+    display: flex; flex-direction: column; align-items: flex-start;
+    margin-left: auto; margin-right: auto;
+  }
+  .intro-logo { margin-bottom: 36px; }
+  .intro-logo img { height: 28px; width: auto; object-fit: contain; }
+  .intro-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(22px, 6.5vw, 32px);
+    font-weight: 400; color: var(--white);
+    line-height: 1.24; margin-bottom: 14px;
+    text-shadow: 0 2px 16px rgba(0,0,0,0.6);
+  }
+  .intro-heading strong { font-weight: 700; }
+  .intro-sub {
+    font-size: clamp(13px, 3.5vw, 15px); font-weight: 300;
+    color: var(--white-80); line-height: 1.6; margin-bottom: 32px;
+  }
+  .btn-intro {
+    padding: 15px 36px;
+    background: rgba(10,8,4,0.88); border: 1px solid var(--white-30); border-radius: 4px;
+    color: var(--white); font-family: 'Jost', sans-serif; font-size: 15px; font-weight: 500;
+    letter-spacing: 0.10em; cursor: pointer; transition: all 0.22s; margin-bottom: 14px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); min-height: 50px;
+  }
+  .btn-intro:active { background: rgba(201,168,76,0.18); border-color: var(--gold); color: var(--gold-light); }
+  @media (hover:hover) { .btn-intro:hover { background: rgba(201,168,76,0.18); border-color: var(--gold); color: var(--gold-light); } }
+  .intro-takes { font-size: 12px; color: var(--white-50); display: flex; align-items: center; gap: 5px; font-weight: 300; letter-spacing: 0.04em; }
+
+  /* ── STEP BADGE ── */
+  .step-badge {
+    width: 28px; height: 28px; border: 1px solid var(--white-30); border-radius: 4px;
+    background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500; color: var(--white-80); margin-bottom: 16px; flex-shrink: 0;
+  }
+
+  /* ── QUESTION ── */
+  .question {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(18px, 5.2vw, 26px); font-weight: 700; color: var(--white);
+    text-align: center; line-height: 1.28; margin-bottom: 6px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  }
+  .question em { font-style: italic; color: var(--gold-light); }
+
+  .subtitle {
+    font-size: 13px; font-weight: 300; color: var(--white-50);
+    font-style: italic; text-align: center; margin-bottom: 20px; letter-spacing: 0.02em;
+  }
+
+  /* ── CHOICES ── */
+  .choices { width: 100%; display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+  .choice {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 16px;
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px;
+    cursor: pointer; transition: background 0.18s, border-color 0.18s;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    min-height: 50px; -webkit-tap-highlight-color: transparent;
+  }
+  .choice:active { background: var(--card-hover); }
+  @media (hover:hover) { .choice:hover { background: var(--card-hover); border-color: var(--white-30); } }
+  .choice.selected { background: rgba(201,168,76,0.15); border-color: var(--gold); }
+  .choice-key {
+    width: 22px; height: 22px; border: 1px solid var(--white-30); border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 500; color: var(--white-50); flex-shrink: 0; transition: all 0.18s;
+  }
+  .choice.selected .choice-key { background: var(--gold); border-color: var(--gold); color: #000; }
+  .choice-text { font-size: clamp(13px, 3.5vw, 14px); font-weight: 400; color: var(--white-80); line-height: 1.3; }
+  .choice.selected .choice-text { color: var(--white); }
+
+  /* ── BEFORE/AFTER ── */
+  .before-after { display: flex; gap: 8px; width: 100%; margin-bottom: 20px; }
+  .before-after img {
+    flex: 1; width: 50%; height: clamp(130px, 32vw, 190px);
+    object-fit: cover; border-radius: 6px; display: block;
+  }
+
+  /* ── INPUT ── */
+  .tf-input-wrap { width: 100%; margin-bottom: 20px; }
+  .tf-input {
+    width: 100%; background: transparent; border: none;
+    border-bottom: 1px solid var(--white-30); color: var(--white);
+    font-size: clamp(16px, 4.5vw, 20px); font-family: 'Jost', sans-serif; font-weight: 300;
+    padding: 10px 0; outline: none; transition: border-color 0.2s;
+    caret-color: var(--gold); text-align: center; letter-spacing: 0.04em;
+    -webkit-appearance: none; border-radius: 0;
+  }
+  .tf-input::placeholder { color: var(--white-30); font-style: italic; font-size: clamp(13px,3.5vw,15px); }
+  .tf-input:focus { border-bottom-color: var(--gold); }
+
+  /* ── BODY TEXT ── */
+  .body-text {
+    font-size: clamp(13px, 3.8vw, 15px); font-weight: 300; color: var(--white-80);
+    text-align: center; line-height: 1.7; margin-bottom: 22px; max-width: 360px;
+  }
+
+  /* ── CONTINUE BTN ── */
+  .btn-continue {
+    padding: 14px 40px; background: rgba(10,8,4,0.85); border: 1px solid var(--white-30); border-radius: 4px;
+    color: var(--white); font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: all 0.22s;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); min-height: 50px;
+  }
+  .btn-continue:active { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold-light); }
+  @media (hover:hover) { .btn-continue:hover { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold-light); } }
+
+  /* ── WHATSAPP BTN ── */
+  .btn-whatsapp {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 16px 24px; width: 100%; max-width: 340px;
+    background: rgba(10,8,4,0.90); border: 1px solid var(--white-30); border-radius: 4px;
+    color: var(--white); font-family: 'Jost', sans-serif; font-size: clamp(13px,3.8vw,15px); font-weight: 500;
+    letter-spacing: 0.06em; cursor: pointer; transition: all 0.22s; text-decoration: none;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); min-height: 54px;
+  }
+  .btn-whatsapp:active { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold-light); }
+  @media (hover:hover) { .btn-whatsapp:hover { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold-light); } }
+  .btn-whatsapp svg { width: 20px; height: 20px; fill: currentColor; flex-shrink: 0; }
+
+  /* ── NAV ── */
+  .nav-row {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    display: flex; justify-content: center; align-items: center;
+    padding: 10px 24px calc(14px + var(--safe-bottom)); gap: 12px;
+    background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 100%);
+  }
+  .btn-back {
+    background: none; border: none; color: var(--white-30);
+    font-size: 12px; font-family: 'Jost', sans-serif; letter-spacing: 0.08em;
+    cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 10px 8px;
+    transition: color 0.2s; min-height: 44px;
+  }
+  .btn-back:active { color: var(--white-80); }
+  @media (hover:hover) { .btn-back:hover { color: var(--white-80); } }
+  .btn-next {
+    padding: 12px 28px; background: var(--gold); border: none; border-radius: 3px;
+    color: #000; font-family: 'Jost', sans-serif; font-size: 13px; font-weight: 500;
+    letter-spacing: 0.10em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; min-height: 44px;
+  }
+  .btn-next:active { background: var(--gold-light); }
+  @media (hover:hover) { .btn-next:hover { background: var(--gold-light); } }
+  .btn-next:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── TABLET ── */
+  @media (min-width: 600px) {
+    .slide { padding-left: 40px; padding-right: 40px; }
+    .intro-content { padding: 0 32px; }
+  }
+
+  /* ── SCROLLBAR ── */
+  .slide::-webkit-scrollbar { width: 2px; }
+  .slide::-webkit-scrollbar-track { background: transparent; }
+  .slide::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+</style>
+
+ <!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '2101398087272409');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=2101398087272409&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
+ 
+</head>
+<body class="intro-active">
+
+<div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+<div class="logo"><img src="images/logo.svg" alt="Botopremium"></div>
+
+<div id="form-wrap">
+
+  <!-- INTRO -->
+  <div class="slide slide-intro active" id="slide-intro">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-1.jpeg')"></div>
+    <div class="intro-content">
+      <div class="intro-logo"><img src="images/logo.svg" alt="Botopremium"></div>
+      <h1 class="intro-heading"><strong>Rejuvenesça até 10 anos</strong> com técnica, segurança e <strong>naturalidade</strong> através do Protocolo BRP Face.</h1>
+      <p class="intro-sub">Descubra como um protocolo personalizado pode transformar seu rosto sem exageros.</p>
+      <button class="btn-intro" id="btn-intro">Eu mereço!</button>
+    </div>
+  </div>
+
+  <!-- NOME — Como prefere ser chamada -->
+  <div class="slide" id="slide-nome">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-1.jpeg')"></div>
+    <div class="slide-content">
+      <div class="step-badge">1</div>
+      <h2 class="question"><em>Como você prefere ser chamada?</em></h2>
+      <div class="tf-input-wrap">
+        <input class="tf-input" type="text" id="input-nome" placeholder="Nome Completo" autocomplete="name">
+      </div>
+    </div>
+  </div>
+
+   <!-- P8 — WhatsApp -->
+  <div class="slide" id="slide-7">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-9.jpeg')"></div>
+    <div class="slide-content">
+      <div class="step-badge">2</div>
+      <h2 class="question"><em>Qual seu WhatsApp?</em></h2>
+      <p class="subtitle">DDD + Telefone</p>
+      <div class="tf-input-wrap">
+        <input class="tf-input" type="tel" id="input-whatsapp" placeholder="(00) 00000-0000" autocomplete="tel" inputmode="numeric" maxlength="15">
+      </div>
+    </div>
+  </div>
+
+    <!-- P1 — Idade -->
+  <div class="slide" id="slide-0">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-2.jpeg')"></div>
+    <div class="slide-content">
+      <div class="step-badge">3</div>
+      <h2 class="question">Cada fase da vida pede uma abordagem diferente. <em>Quantos anos você tem hoje?</em></h2>
+      <div class="choices">
+        <div class="choice" data-field="idade" data-val="Até 25"><span class="choice-key">A</span><span class="choice-text">Até 25</span></div>
+        <div class="choice" data-field="idade" data-val="26 a 35"><span class="choice-key">B</span><span class="choice-text">26 a 35</span></div>
+        <div class="choice" data-field="idade" data-val="35 a 45"><span class="choice-key">C</span><span class="choice-text">35 a 45</span></div>
+        <div class="choice" data-field="idade" data-val="45 a 55"><span class="choice-key">D</span><span class="choice-text">45 a 55</span></div>
+        <div class="choice" data-field="idade" data-val="55 a 65"><span class="choice-key">E</span><span class="choice-text">55 a 65</span></div>
+        <div class="choice" data-field="idade" data-val="65+"><span class="choice-key">F</span><span class="choice-text">65+</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- P2 — Resultado + antes/depois -->
+  <div class="slide" id="slide-1">
+    <div class="slide-content">
+      <div class="step-badge">4</div>
+      <h2 class="question">Resultados reais do protocolo BRP Face. <em>Esse tipo de resultado faz sentido para você?</em></h2>
+      <div class="before-after">
+        <img src="images/antes-depois-1.jpeg" alt="Antes e depois 1">
+        <img src="images/antes-depois-2.jpeg" alt="Antes e depois 2">
+      </div>
+      <div class="choices">
+        <div class="choice" data-field="resultado_faz_sentido" data-val="Quero esse resultado!"><span class="choice-key">A</span><span class="choice-text">Quero esse resultado!</span></div>
+        <div class="choice" data-field="resultado_faz_sentido" data-val="É isso que eu preciso!"><span class="choice-key">B</span><span class="choice-text">É isso que eu preciso!</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- P3 — Incomodo -->
+  <div class="slide" id="slide-2">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-3.jpeg')"></div>
+    <div class="slide-content">
+      <div class="step-badge">5</div>
+      <h2 class="question"><em>O que mais te incomoda no seu rosto hoje</em> e o que você gostaria de melhorar?</h2>
+      <div class="choices">
+        <div class="choice" data-field="incomodo" data-val="Sensação de derretimento facial"><span class="choice-key">A</span><span class="choice-text">Sensação de derretimento facial</span></div>
+        <div class="choice" data-field="incomodo" data-val="Rugas e Linhas expressão"><span class="choice-key">B</span><span class="choice-text">Rugas e Linhas expressão</span></div>
+        <div class="choice" data-field="incomodo" data-val="Olheiras"><span class="choice-key">C</span><span class="choice-text">Olheiras</span></div>
+        <div class="choice" data-field="incomodo" data-val="Falta de contorno e viço"><span class="choice-key">D</span><span class="choice-text">Falta de contorno e viço</span></div>
+        <div class="choice" data-field="incomodo" data-val="Envelhecimento facial de forma geral"><span class="choice-key">E</span><span class="choice-text">Envelhecimento facial de forma geral</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- P4 — Momento -->
+  <div class="slide" id="slide-3">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-4.jpeg')"></div>
+    <div class="slide-content">
+      <div class="step-badge">6</div>
+      <h2 class="question">Você está buscando esse tipo de resultado <em>para qual momento?</em></h2>
+      <div class="choices">
+        <div class="choice" data-field="momento" data-val="O quanto antes!"><span class="choice-key">A</span><span class="choice-text">O quanto antes!</span></div>
+        <div class="choice" data-field="momento" data-val="Nos próximos 30 dias"><span class="choice-key">B</span><span class="choice-text">Nos próximos 30 dias</span></div>
+        <div class="choice" data-field="momento" data-val="Estou avaliando"><span class="choice-key">C</span><span class="choice-text">Estou avaliando</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- P5 — Statement -->
+  <div class="slide" id="slide-4">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-5.jpeg')"></div>
+    <div class="slide-content">
+      <div class="step-badge" style="border-color:rgba(201,168,76,0.4);color:var(--gold-light);">"</div>
+      <h2 class="question">Resultados como esses não são construídos com um único procedimento.</h2>
+      <p class="body-text">O BRP Face é um protocolo personalizado, que combina técnicas e tecnologia para um resultado natural e duradouro.</p>
+      <button class="btn-continue" id="btn-statement">Continue</button>
+    </div>
+  </div>
+
+  <!-- P6 — Investimento -->
+  <div class="slide" id="slide-5">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-6.jpeg')"></div>
+    <div class="slide-content">
+      <div class="step-badge">7</div>
+      <h2 class="question">Para alcançarmos esse nível de resultado, <em>qual faixa de investimento faz mais sentido para você hoje?</em></h2>
+      <div class="choices">
+        <div class="choice" data-field="investimento" data-val="Até R$3.500"><span class="choice-key">A</span><span class="choice-text">Até R$3.500</span></div>
+        <div class="choice" data-field="investimento" data-val="De R$3.500 a R$5.000"><span class="choice-key">B</span><span class="choice-text">De R$3.500 a R$5.000</span></div>
+        <div class="choice" data-field="investimento" data-val="De R$5.000 a R$8.000"><span class="choice-key">C</span><span class="choice-text">De R$5.000 a R$8.000</span></div>
+        <div class="choice" data-field="investimento" data-val="De R$8.000 a R$12.000"><span class="choice-key">D</span><span class="choice-text">De R$8.000 a R$12.000</span></div>
+        <div class="choice" data-field="investimento" data-val="De R$12.000 a R$18.000"><span class="choice-key">E</span><span class="choice-text">De R$12.000 a R$18.000</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- P7A — Decisão (Até R$3.500) -->
+  <div class="slide" id="slide-6a">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-7.jpeg')"></div>
+    <div class="slide-content">
+      <div class="step-badge">8</div>
+      <h2 class="question">Com esse nível de investimento conseguimos iniciar o seu tratamento e com certeza já verá <em>resultados incríveis!</em></h2>
+      <p class="body-text">Sua avaliação é um momento exclusivo, onde analisamos seu rosto de forma completa e desenhamos sua estratégia personalizada.<br><br><strong style="color:var(--white)">Pronta para o primeiro passo da sua transformação?</strong></p>
+      <div class="choices">
+        <div class="choice" data-field="decisao" data-val="Sim, quero agendar minha avaliação!"><span class="choice-key">A</span><span class="choice-text">Sim, quero agendar minha avaliação!</span></div>
+        <div class="choice" data-field="decisao" data-val="Quero entender melhor antes"><span class="choice-key">B</span><span class="choice-text">Quero entender melhor antes</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- P7B — Decisão (outros) -->
+  <div class="slide" id="slide-6b">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-7.jpeg')"></div>
+    <div class="slide-content">
+      <div class="step-badge">9</div>
+      <h2 class="question">Você está prestes a viver <em>a sua melhor versão.</em></h2>
+      <p class="body-text">Sua avaliação é um momento exclusivo, onde analisamos seu rosto de forma completa e desenhamos sua estratégia personalizada.<br><br><strong style="color:var(--white)">Pronta para o primeiro passo da sua transformação?</strong></p>
+      <div class="choices">
+        <div class="choice" data-field="decisao" data-val="Sim, quero agendar minha avaliação!"><span class="choice-key">A</span><span class="choice-text">Sim, quero agendar minha avaliação!</span></div>
+        <div class="choice" data-field="decisao" data-val="Quero entender melhor antes"><span class="choice-key">B</span><span class="choice-text">Quero entender melhor antes</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FINAL -->
+  <div class="slide slide-final" id="slide-8">
+    <div class="slide-bg" style="background-image:url('images/bg-pergunta-10.jpeg')"></div>
+    <div class="slide-content" style="align-items:center;text-align:center;">
+      <h2 class="question" style="font-size:clamp(20px,6vw,30px);margin-bottom:10px;">Você não chegou aqui por acaso! 💛</h2>
+      <p class="body-text" style="margin-bottom:32px;">Estamos ansiosas para cuidar de você.</p>
+      <a id="btn-whatsapp" href="#" class="btn-whatsapp" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        👉 Quero agendar pelo WhatsApp
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Nav -->
+<div class="nav-row" id="nav-row" style="display:none">
+  <button class="btn-back" id="btn-back" style="display:none">← Voltar</button>
+  <button class="btn-next" id="btn-next" disabled>OK</button>
+</div>
+
+<script>
+  const ATHENDLY_URL = 'https://app.atendly.com.br/api/webhooks/integrations/webhook/59/hyOXrwfrKDT9rANb6bPL6OYKd?event=input.lead.new';
+  const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxgTm6EvemJxYV-h7-GO02Sms_UuGa9ii-LLWmCSX5ND0WpiXTty9NqfvJo6ujaGAjKYA/exec';
+  const WHATSAPP_CLINICA  = '5516997129082'; // número da clínica com DDI+DDD
+
+  // Gera um ID único pro lead (mesmo lead = mesma linha na planilha)
+  const LEAD_ID = 'lead-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+
+  const answers = {};
+  let current = -1;
+  let slideStack = [];
+  const HIDDEN_NAV = ['slide-intro','slide-4','slide-8'];
+
+  function buildStack() {
+    const dec = answers['investimento'] === 'Até R$3.500' ? 'slide-6a' : 'slide-6b';
+    slideStack = ['slide-nome','slide-7','slide-0','slide-1','slide-2','slide-3','slide-4','slide-5',dec,'slide-8'];
+  }
+  buildStack();
+
+  function currentId() { return current === -1 ? 'slide-intro' : slideStack[current]; }
+
+  function updateProgress() {
+    if (current < 0) return;
+    document.getElementById('progress').style.width = ((current / (slideStack.length-1)) * 100) + '%';
+  }
+
+  function updateNav() {
+    const id = currentId();
+    const navRow = document.getElementById('nav-row');
+    const btnBack = document.getElementById('btn-back');
+    if (HIDDEN_NAV.includes(id)) { navRow.style.display = 'none'; return; }
+    navRow.style.display = 'flex';
+    btnBack.style.display = current > 0 ? 'flex' : 'none';
+    updateNextBtn();
+  }
+
+  function updateNextBtn() {
+    const id = currentId();
+    const el = document.getElementById(id);
+    const btn = document.getElementById('btn-next');
+    if (!el || !btn) return;
+    if (id === 'slide-nome') {
+      const nomeVal = document.getElementById('input-nome').value.trim();
+      btn.disabled = nomeVal.length < 2;
+      btn.textContent = 'OK';
+    } else if (id === 'slide-7') {
+      btn.disabled = (document.getElementById('input-whatsapp').value.replace(/\D/g,'').length < 10);
+      btn.textContent = 'ENVIAR';
+    } else {
+      btn.disabled = !el.querySelector('.choice.selected');
+      btn.textContent = 'OK';
+    }
+  }
+
+  function goTo(nextIdx, dir) {
+    const oldId = currentId();
+    const oldEl = document.getElementById(oldId);
+    current = nextIdx;
+    buildStack();
+    const newId = currentId();
+    const newEl = document.getElementById(newId);
+
+    document.body.classList.toggle('intro-active', newId === 'slide-intro');
+
+    if (oldEl) {
+      oldEl.classList.remove('active');
+      oldEl.classList.add(dir === 'forward' ? 'exit-up' : 'exit-down');
+      setTimeout(() => oldEl.classList.remove('exit-up','exit-down'), 500);
+    }
+    if (newEl) {
+      newEl.style.transform = dir === 'forward' ? 'translateY(48px)' : 'translateY(-48px)';
+      newEl.style.opacity = '0';
+      newEl.style.pointerEvents = 'none';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        newEl.classList.add('active');
+        newEl.style.transform = newEl.style.opacity = newEl.style.pointerEvents = '';
+        newEl.scrollTop = 0;
+        const inp = newEl.querySelector('input');
+        if (inp) setTimeout(() => inp.focus(), 350);
+      }));
+    }
+    updateProgress();
+    updateNav();
+  }
+
+  document.getElementById('btn-intro').addEventListener('click', () => goTo(0,'forward'));
+  document.getElementById('btn-statement').addEventListener('click', () => goTo(current+1,'forward'));
+
+  document.querySelectorAll('.choice').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const { field, val } = btn.dataset;
+      btn.closest('.choices').querySelectorAll('.choice').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      answers[field] = val;
+      if (field === 'investimento') buildStack();
+      updateNextBtn();
+      setTimeout(() => { if (!document.getElementById('btn-next').disabled) goNext(); }, 380);
+    });
+  });
+
+  document.getElementById('input-nome').addEventListener('input', function() {
+    answers['nome'] = this.value.trim();
+    updateNextBtn();
+  });
+  document.getElementById('input-nome').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !document.getElementById('btn-next').disabled) goNext();
+  });
+
+  document.getElementById('input-whatsapp').addEventListener('input', function() {
+    // Remove todos os não-dígitos
+    let v = this.value.replace(/\D/g, '');
+    // Se veio com +55 (DDI Brasil), remove os 2 primeiros dígitos
+    if (v.length > 11 && v.startsWith('55')) {
+      v = v.slice(2);
+    }
+    // Garante no máximo 11 dígitos (DDD + 9 dígitos)
+    v = v.slice(0, 11);
+
+    // Máscara (XX) XXXXX-XXXX
+    let masked = '';
+    if (v.length === 0) {
+      masked = '';
+    } else if (v.length <= 2) {
+      masked = '(' + v;
+    } else if (v.length <= 7) {
+      masked = '(' + v.slice(0,2) + ') ' + v.slice(2);
+    } else {
+      masked = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
+    }
+    this.value = masked;
+    answers['whatsapp'] = masked;
+    updateNextBtn();
+  });
+  document.getElementById('input-whatsapp').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !document.getElementById('btn-next').disabled) goNext();
+  });
+
+  // ── ENVIO PARA GOOGLE SHEETS (a cada pergunta respondida) ──
+  function enviarParaSheets(etapa) {
+    const payload = {
+      leadId: LEAD_ID,
+      nome: answers.nome || '',
+      whatsapp: (answers.whatsapp || '').replace(/\D/g,''),
+      idade: answers.idade || '',
+      incomodo: answers.incomodo || '',
+      momento: answers.momento || '',
+      investimento: answers.investimento || '',
+      resultado_faz_sentido: answers.resultado_faz_sentido || '',
+      decisao: answers.decisao || '',
+      etapa: etapa || ''
+    };
+    // Envio "fire-and-forget" — sem header Content-Type para evitar preflight CORS
+    fetch(SHEETS_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }).catch(e => console.warn('Erro Sheets:', e));
+  }
+
+ function goNext() {
+    const id = currentId();
+
+    // Mapeia o ID do slide para o nome legível da etapa que acabou de ser respondida
+    const etapaMap = {
+      'slide-nome': 'Nome preenchido',
+      'slide-7': 'WhatsApp preenchido',
+      'slide-0': 'Idade respondida',
+      'slide-1': 'Resultado faz sentido respondido',
+      'slide-2': 'Incômodo respondido',
+      'slide-3': 'Momento respondido',
+      'slide-4': 'Statement visualizado',
+      'slide-5': 'Investimento respondido',
+      'slide-6a': 'Decisão respondida',
+      'slide-6b': 'Decisão respondida'
+    };
+
+    // Envia para a planilha a cada pergunta respondida
+    if (etapaMap[id]) enviarParaSheets(etapaMap[id]);
+
+    if (id === 'slide-6a' || id === 'slide-6b') { submitForm(); return; }
+    if (id === 'slide-7') { enviarLeadInicial(); }
+    if (current < slideStack.length-1) goTo(current+1,'forward');
+  }
+  function goBack() {
+    if (current > 0) goTo(current-1,'backward');
+    else if (current === 0) goTo(-1,'backward');
+  }
+
+  document.getElementById('btn-next').addEventListener('click', goNext);
+  document.getElementById('btn-back').addEventListener('click', goBack);
+
+  // ── ABANDON DETECTION ──
+  let abandonTimer = null;
+  let formConcluido = false;
+
+  function resetAbandonTimer() {
+    // Só monitora se já tiver WhatsApp preenchido
+    if (!answers.whatsapp || formConcluido) return;
+    clearTimeout(abandonTimer);
+    abandonTimer = setTimeout(() => {
+      enviarAbandonoCRM();
+    }, 30000); // 30 segundos de inatividade
+  }
+
+  // Reinicia o timer a cada interação do usuário
+  document.addEventListener('click', resetAbandonTimer);
+  document.addEventListener('keydown', resetAbandonTimer);
+
+async function enviarLeadInicial() {
+    if (!answers.whatsapp) return;
+    try {
+      await fetch(ATHENDLY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: answers.nome||'',
+          whatsapp: answers.whatsapp.replace(/\D/g,'')||''
+        })
+      });
+      resetAbandonTimer();
+    } catch(e) { console.warn('Erro lead inicial:', e); }
+  }
+
+  async function enviarAbandonoCRM() {
+    if (!answers.whatsapp || formConcluido) return;
+    // Marca abandono na planilha
+    enviarParaSheets('ABANDONOU (30s sem interação)');
+  }
+   
+async function submitForm() {
+    fbq('trackCustom', 'TypeformSubmit');
+    fbq('trackCustom', 'LeadTypeformProprio');
+    formConcluido = true;
+    clearTimeout(abandonTimer);
+
+    // Envia status final pra planilha
+    enviarParaSheets('Formulário concluído');
+
+    const msg = encodeURIComponent('Olá! Quero agendar minha avaliação BRP Face.');
+    document.getElementById('btn-whatsapp').href = `https://wa.me/${WHATSAPP_CLINICA}?text=${msg}`;
+    goTo(current+1,'forward');
+  }
+  updateProgress();
+  updateNav();
+</script>
+</body>
+</html>
