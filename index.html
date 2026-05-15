@@ -459,248 +459,381 @@ src="https://www.facebook.com/tr?id=2101398087272409&ev=PageView&noscript=1"
 </div>
 
 <script>
-  const ATHENDLY_URL = 'https://app.atendly.com.br/api/webhooks/integrations/webhook/59/hyOXrwfrKDT9rANb6bPL6OYKd?event=input.lead.new';
-  const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxgTm6EvemJxYV-h7-GO02Sms_UuGa9ii-LLWmCSX5ND0WpiXTty9NqfvJo6ujaGAjKYA/exec';
-  const WHATSAPP_CLINICA  = '5516997129082'; // número da clínica com DDI+DDD
+  // ═══════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO
+// ═══════════════════════════════════════════════════════════════
+const ATHENDLY_URL = 'https://app.atendly.com.br/api/webhooks/integrations/webhook/59/hyOXrwfrKDT9rANb6bPL6OYKd?event=input.lead.new';
+const SHEETS_URL   = 'https://script.google.com/macros/s/AKfycbxgTm6EvemJxYV-h7-GO02Sms_UuGa9ii-LLWmCSX5ND0WpiXTty9NqfvJo6ujaGAjKYA/exec';
+const KOMMO_WEBHOOK_URL = 'https://hook.eu2.make.com/SEU_WEBHOOK_AQUI'; // ← cole aqui o webhook do Make
+const WHATSAPP_CLINICA  = '5516997129082';
 
-  // Gera um ID único pro lead (mesmo lead = mesma linha na planilha)
-  const LEAD_ID = 'lead-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+// ═══════════════════════════════════════════════════════════════
+// LEAD_ID PERSISTENTE (sobrevive a refresh e retorno do usuário)
+// ═══════════════════════════════════════════════════════════════
+let LEAD_ID = localStorage.getItem('lead_id');
+if (!LEAD_ID) {
+  LEAD_ID = 'lead-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+  localStorage.setItem('lead_id', LEAD_ID);
+  localStorage.setItem('lead_id_created_at', Date.now().toString());
+}
+// Expira após 7 dias para não acumular lead-fantasma indefinidamente
+const idAge = Date.now() - parseInt(localStorage.getItem('lead_id_created_at') || '0');
+if (idAge > 7 * 24 * 60 * 60 * 1000) {
+  LEAD_ID = 'lead-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+  localStorage.setItem('lead_id', LEAD_ID);
+  localStorage.setItem('lead_id_created_at', Date.now().toString());
+}
 
-  const answers = {};
-  let current = -1;
-  let slideStack = [];
-  const HIDDEN_NAV = ['slide-intro','slide-4','slide-8'];
+// ═══════════════════════════════════════════════════════════════
+// CAPTURA DE ATRIBUIÇÃO (UTMs, fbclid, gclid)
+// ═══════════════════════════════════════════════════════════════
+const ATTRIBUTION_KEYS = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','fbclid','gclid'];
+const attribution = {};
 
-  function buildStack() {
-    const dec = answers['investimento'] === 'Até R$3.500' ? 'slide-6a' : 'slide-6b';
-    slideStack = ['slide-nome','slide-7','slide-0','slide-1','slide-2','slide-3','slide-4','slide-5',dec,'slide-8'];
-  }
-  buildStack();
-
-  function currentId() { return current === -1 ? 'slide-intro' : slideStack[current]; }
-
-  function updateProgress() {
-    if (current < 0) return;
-    document.getElementById('progress').style.width = ((current / (slideStack.length-1)) * 100) + '%';
-  }
-
-  function updateNav() {
-    const id = currentId();
-    const navRow = document.getElementById('nav-row');
-    const btnBack = document.getElementById('btn-back');
-    if (HIDDEN_NAV.includes(id)) { navRow.style.display = 'none'; return; }
-    navRow.style.display = 'flex';
-    btnBack.style.display = current > 0 ? 'flex' : 'none';
-    updateNextBtn();
-  }
-
-  function updateNextBtn() {
-    const id = currentId();
-    const el = document.getElementById(id);
-    const btn = document.getElementById('btn-next');
-    if (!el || !btn) return;
-    if (id === 'slide-nome') {
-      const nomeVal = document.getElementById('input-nome').value.trim();
-      btn.disabled = nomeVal.length < 2;
-      btn.textContent = 'OK';
-    } else if (id === 'slide-7') {
-      btn.disabled = (document.getElementById('input-whatsapp').value.replace(/\D/g,'').length < 10);
-      btn.textContent = 'ENVIAR';
-    } else {
-      btn.disabled = !el.querySelector('.choice.selected');
-      btn.textContent = 'OK';
-    }
-  }
-
-  function goTo(nextIdx, dir) {
-    const oldId = currentId();
-    const oldEl = document.getElementById(oldId);
-    current = nextIdx;
-    buildStack();
-    const newId = currentId();
-    const newEl = document.getElementById(newId);
-
-    document.body.classList.toggle('intro-active', newId === 'slide-intro');
-
-    if (oldEl) {
-      oldEl.classList.remove('active');
-      oldEl.classList.add(dir === 'forward' ? 'exit-up' : 'exit-down');
-      setTimeout(() => oldEl.classList.remove('exit-up','exit-down'), 500);
-    }
-    if (newEl) {
-      newEl.style.transform = dir === 'forward' ? 'translateY(48px)' : 'translateY(-48px)';
-      newEl.style.opacity = '0';
-      newEl.style.pointerEvents = 'none';
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        newEl.classList.add('active');
-        newEl.style.transform = newEl.style.opacity = newEl.style.pointerEvents = '';
-        newEl.scrollTop = 0;
-        const inp = newEl.querySelector('input');
-        if (inp) setTimeout(() => inp.focus(), 350);
-      }));
-    }
-    updateProgress();
-    updateNav();
-  }
-
-  document.getElementById('btn-intro').addEventListener('click', () => goTo(0,'forward'));
-  document.getElementById('btn-statement').addEventListener('click', () => goTo(current+1,'forward'));
-
-  document.querySelectorAll('.choice').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const { field, val } = btn.dataset;
-      btn.closest('.choices').querySelectorAll('.choice').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      answers[field] = val;
-      if (field === 'investimento') buildStack();
-      updateNextBtn();
-      setTimeout(() => { if (!document.getElementById('btn-next').disabled) goNext(); }, 380);
-    });
+(function captureAttribution() {
+  const params = new URLSearchParams(window.location.search);
+  const fromUrl = {};
+  ATTRIBUTION_KEYS.forEach(k => {
+    const v = params.get(k);
+    if (v) fromUrl[k] = v;
   });
 
-  document.getElementById('input-nome').addEventListener('input', function() {
-    answers['nome'] = this.value.trim();
-    updateNextBtn();
-  });
-  document.getElementById('input-nome').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !document.getElementById('btn-next').disabled) goNext();
-  });
-
-  document.getElementById('input-whatsapp').addEventListener('input', function() {
-    // Remove todos os não-dígitos
-    let v = this.value.replace(/\D/g, '');
-    // Se veio com +55 (DDI Brasil), remove os 2 primeiros dígitos
-    if (v.length > 11 && v.startsWith('55')) {
-      v = v.slice(2);
-    }
-    // Garante no máximo 11 dígitos (DDD + 9 dígitos)
-    v = v.slice(0, 11);
-
-    // Máscara (XX) XXXXX-XXXX
-    let masked = '';
-    if (v.length === 0) {
-      masked = '';
-    } else if (v.length <= 2) {
-      masked = '(' + v;
-    } else if (v.length <= 7) {
-      masked = '(' + v.slice(0,2) + ') ' + v.slice(2);
-    } else {
-      masked = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
-    }
-    this.value = masked;
-    answers['whatsapp'] = masked;
-    updateNextBtn();
-  });
-  document.getElementById('input-whatsapp').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !document.getElementById('btn-next').disabled) goNext();
-  });
-
-  // ── ENVIO PARA GOOGLE SHEETS (a cada pergunta respondida) ──
-  function enviarParaSheets(etapa) {
-    const payload = {
-      leadId: LEAD_ID,
-      nome: answers.nome || '',
-      whatsapp: (answers.whatsapp || '').replace(/\D/g,''),
-      idade: answers.idade || '',
-      incomodo: answers.incomodo || '',
-      momento: answers.momento || '',
-      investimento: answers.investimento || '',
-      resultado_faz_sentido: answers.resultado_faz_sentido || '',
-      decisao: answers.decisao || '',
-      etapa: etapa || ''
-    };
-    // Envio "fire-and-forget" — sem header Content-Type para evitar preflight CORS
-    fetch(SHEETS_URL, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    }).catch(e => console.warn('Erro Sheets:', e));
-  }
-
- function goNext() {
-    const id = currentId();
-
-    // Mapeia o ID do slide para o nome legível da etapa que acabou de ser respondida
-    const etapaMap = {
-      'slide-nome': 'Nome preenchido',
-      'slide-7': 'WhatsApp preenchido',
-      'slide-0': 'Idade respondida',
-      'slide-1': 'Resultado faz sentido respondido',
-      'slide-2': 'Incômodo respondido',
-      'slide-3': 'Momento respondido',
-      'slide-4': 'Statement visualizado',
-      'slide-5': 'Investimento respondido',
-      'slide-6a': 'Decisão respondida',
-      'slide-6b': 'Decisão respondida'
-    };
-
-    // Envia para a planilha a cada pergunta respondida
-    if (etapaMap[id]) enviarParaSheets(etapaMap[id]);
-
-    if (id === 'slide-6a' || id === 'slide-6b') { submitForm(); return; }
-    if (id === 'slide-7') { enviarLeadInicial(); }
-    if (current < slideStack.length-1) goTo(current+1,'forward');
-  }
-  function goBack() {
-    if (current > 0) goTo(current-1,'backward');
-    else if (current === 0) goTo(-1,'backward');
-  }
-
-  document.getElementById('btn-next').addEventListener('click', goNext);
-  document.getElementById('btn-back').addEventListener('click', goBack);
-
-  // ── ABANDON DETECTION ──
-  let abandonTimer = null;
-  let formConcluido = false;
-
-  function resetAbandonTimer() {
-    // Só monitora se já tiver WhatsApp preenchido
-    if (!answers.whatsapp || formConcluido) return;
-    clearTimeout(abandonTimer);
-    abandonTimer = setTimeout(() => {
-      enviarAbandonoCRM();
-    }, 30000); // 30 segundos de inatividade
-  }
-
-  // Reinicia o timer a cada interação do usuário
-  document.addEventListener('click', resetAbandonTimer);
-  document.addEventListener('keydown', resetAbandonTimer);
-
-async function enviarLeadInicial() {
-    if (!answers.whatsapp) return;
+  if (Object.keys(fromUrl).length) {
+    // Veio com UTMs na URL → salva persistente por 30 dias
+    fromUrl.saved_at = Date.now();
+    localStorage.setItem('lead_attribution', JSON.stringify(fromUrl));
+    Object.assign(attribution, fromUrl);
+  } else {
+    // Recupera atribuição anterior (se ainda válida)
     try {
-      await fetch(ATHENDLY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: answers.nome||'',
-          whatsapp: answers.whatsapp.replace(/\D/g,'')||''
-        })
-      });
-      resetAbandonTimer();
-    } catch(e) { console.warn('Erro lead inicial:', e); }
+      const saved = JSON.parse(localStorage.getItem('lead_attribution') || '{}');
+      if (saved.saved_at && (Date.now() - saved.saved_at) < 30 * 24 * 60 * 60 * 1000) {
+        Object.assign(attribution, saved);
+      }
+    } catch(e) {}
   }
 
-  async function enviarAbandonoCRM() {
-    if (!answers.whatsapp || formConcluido) return;
-    // Marca abandono na planilha
-    enviarParaSheets('ABANDONOU (30s sem interação)');
+  attribution.landing_page = window.location.href;
+  attribution.referrer = document.referrer || '';
+  attribution.user_agent = navigator.userAgent;
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// ESTADO DO FORMULÁRIO
+// ═══════════════════════════════════════════════════════════════
+const answers = {};
+let current = -1;
+let slideStack = [];
+const HIDDEN_NAV = ['slide-intro','slide-4','slide-8'];
+let formConcluido = false;
+let leadCriadoNoKommo = false; // flag para diferenciar create vs update
+
+function buildStack() {
+  const dec = answers['investimento'] === 'Até R$3.500' ? 'slide-6a' : 'slide-6b';
+  slideStack = ['slide-nome','slide-7','slide-0','slide-1','slide-2','slide-3','slide-4','slide-5',dec,'slide-8'];
+}
+buildStack();
+
+function currentId() { return current === -1 ? 'slide-intro' : slideStack[current]; }
+
+function updateProgress() {
+  if (current < 0) return;
+  document.getElementById('progress').style.width = ((current / (slideStack.length-1)) * 100) + '%';
+}
+
+function updateNav() {
+  const id = currentId();
+  const navRow = document.getElementById('nav-row');
+  const btnBack = document.getElementById('btn-back');
+  if (HIDDEN_NAV.includes(id)) { navRow.style.display = 'none'; return; }
+  navRow.style.display = 'flex';
+  btnBack.style.display = current > 0 ? 'flex' : 'none';
+  updateNextBtn();
+}
+
+function updateNextBtn() {
+  const id = currentId();
+  const el = document.getElementById(id);
+  const btn = document.getElementById('btn-next');
+  if (!el || !btn) return;
+  if (id === 'slide-nome') {
+    const nomeVal = document.getElementById('input-nome').value.trim();
+    btn.disabled = nomeVal.length < 2;
+    btn.textContent = 'OK';
+  } else if (id === 'slide-7') {
+    // VALIDAÇÃO REFORÇADA: celular brasileiro = 11 dígitos começando com DDD (2 dígitos) + 9
+    const v = document.getElementById('input-whatsapp').value.replace(/\D/g,'');
+    const valido = v.length === 11 && v[2] === '9';
+    btn.disabled = !valido;
+    btn.textContent = 'ENVIAR';
+  } else {
+    btn.disabled = !el.querySelector('.choice.selected');
+    btn.textContent = 'OK';
   }
-   
-async function submitForm() {
-    fbq('trackCustom', 'TypeformSubmit');
-    fbq('trackCustom', 'LeadTypeformProprio');
-    formConcluido = true;
-    clearTimeout(abandonTimer);
+}
 
-    // Envia status final pra planilha
-    enviarParaSheets('Formulário concluído');
+function goTo(nextIdx, dir) {
+  const oldId = currentId();
+  const oldEl = document.getElementById(oldId);
+  current = nextIdx;
+  buildStack();
+  const newId = currentId();
+  const newEl = document.getElementById(newId);
 
-    const msg = encodeURIComponent('Olá! Quero agendar minha avaliação BRP Face.');
-    document.getElementById('btn-whatsapp').href = `https://wa.me/${WHATSAPP_CLINICA}?text=${msg}`;
-    goTo(current+1,'forward');
+  document.body.classList.toggle('intro-active', newId === 'slide-intro');
+
+  if (oldEl) {
+    oldEl.classList.remove('active');
+    oldEl.classList.add(dir === 'forward' ? 'exit-up' : 'exit-down');
+    setTimeout(() => oldEl.classList.remove('exit-up','exit-down'), 500);
+  }
+  if (newEl) {
+    newEl.style.transform = dir === 'forward' ? 'translateY(48px)' : 'translateY(-48px)';
+    newEl.style.opacity = '0';
+    newEl.style.pointerEvents = 'none';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      newEl.classList.add('active');
+      newEl.style.transform = newEl.style.opacity = newEl.style.pointerEvents = '';
+      newEl.scrollTop = 0;
+      const inp = newEl.querySelector('input');
+      if (inp) setTimeout(() => inp.focus(), 350);
+    }));
   }
   updateProgress();
   updateNav();
-</script>
-</body>
-</html>
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LISTENERS DE NAVEGAÇÃO E INPUT
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('btn-intro').addEventListener('click', () => goTo(0,'forward'));
+document.getElementById('btn-statement').addEventListener('click', () => goTo(current+1,'forward'));
+
+document.querySelectorAll('.choice').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const { field, val } = btn.dataset;
+    btn.closest('.choices').querySelectorAll('.choice').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    answers[field] = val;
+    if (field === 'investimento') buildStack();
+    updateNextBtn();
+    setTimeout(() => { if (!document.getElementById('btn-next').disabled) goNext(); }, 380);
+  });
+});
+
+document.getElementById('input-nome').addEventListener('input', function() {
+  answers['nome'] = this.value.trim();
+  updateNextBtn();
+});
+document.getElementById('input-nome').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !document.getElementById('btn-next').disabled) goNext();
+});
+
+document.getElementById('input-whatsapp').addEventListener('input', function() {
+  let v = this.value.replace(/\D/g, '');
+  if (v.length > 11 && v.startsWith('55')) v = v.slice(2);
+  v = v.slice(0, 11);
+  let masked = '';
+  if (v.length === 0) masked = '';
+  else if (v.length <= 2) masked = '(' + v;
+  else if (v.length <= 7) masked = '(' + v.slice(0,2) + ') ' + v.slice(2);
+  else masked = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
+  this.value = masked;
+  answers['whatsapp'] = masked;
+  updateNextBtn();
+});
+document.getElementById('input-whatsapp').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !document.getElementById('btn-next').disabled) goNext();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PAYLOAD PADRÃO (usado em todas as integrações)
+// ═══════════════════════════════════════════════════════════════
+function montarPayload(etapa, extras = {}) {
+  const whatsappLimpo = (answers.whatsapp || '').replace(/\D/g,'');
+  // Telefone formato E.164 sem o '+': 55 + DDD + número
+  const telefoneE164 = whatsappLimpo.length === 11 ? '55' + whatsappLimpo : whatsappLimpo;
+
+  return {
+    lead_id: LEAD_ID,
+    nome: answers.nome || '',
+    whatsapp: whatsappLimpo,
+    telefone_e164: telefoneE164,
+    idade: answers.idade || '',
+    incomodo: answers.incomodo || '',
+    momento: answers.momento || '',
+    investimento: answers.investimento || '',
+    resultado_faz_sentido: answers.resultado_faz_sentido || '',
+    decisao: answers.decisao || '',
+    etapa: etapa || '',
+    timestamp: new Date().toISOString(),
+    ...attribution,
+    ...extras
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENVIO PARA GOOGLE SHEETS (mantido como você já tinha)
+// ═══════════════════════════════════════════════════════════════
+function enviarParaSheets(etapa) {
+  const payload = montarPayload(etapa);
+  fetch(SHEETS_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    keepalive: true  // garante envio mesmo se a página fechar
+  }).catch(e => console.warn('Erro Sheets:', e));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENVIO PARA KOMMO (via Make) — create no primeiro envio, update depois
+// ═══════════════════════════════════════════════════════════════
+function enviarParaKommo(etapa, evento = 'update') {
+  // Só envia se tiver pelo menos nome + whatsapp válido
+  const whatsappLimpo = (answers.whatsapp || '').replace(/\D/g,'');
+  if (!answers.nome || whatsappLimpo.length !== 11) return;
+
+  const payload = montarPayload(etapa, {
+    evento, // 'create' | 'update' | 'complete' | 'abandon'
+    lead_ja_criado: leadCriadoNoKommo
+  });
+
+  fetch(KOMMO_WEBHOOK_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    keepalive: true
+  }).then(() => {
+    if (evento === 'create') leadCriadoNoKommo = true;
+  }).catch(e => console.warn('Erro Kommo:', e));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FLUXO DE NAVEGAÇÃO ENTRE SLIDES
+// ═══════════════════════════════════════════════════════════════
+function goNext() {
+  const id = currentId();
+
+  const etapaMap = {
+    'slide-nome': 'Nome preenchido',
+    'slide-7':    'WhatsApp preenchido',
+    'slide-0':    'Idade respondida',
+    'slide-1':    'Resultado faz sentido respondido',
+    'slide-2':    'Incômodo respondido',
+    'slide-3':    'Momento respondido',
+    'slide-4':    'Statement visualizado',
+    'slide-5':    'Investimento respondido',
+    'slide-6a':   'Decisão respondida',
+    'slide-6b':   'Decisão respondida'
+  };
+
+  if (etapaMap[id]) {
+    enviarParaSheets(etapaMap[id]);
+    // KOMMO: cria lead exatamente quando WhatsApp é preenchido
+    if (id === 'slide-7') {
+      enviarParaKommo(etapaMap[id], 'create');
+      enviarLeadInicial(); // mantém o envio para Atendly
+    } else if (leadCriadoNoKommo) {
+      enviarParaKommo(etapaMap[id], 'update');
+    }
+  }
+
+  if (id === 'slide-6a' || id === 'slide-6b') { submitForm(); return; }
+  if (current < slideStack.length-1) goTo(current+1,'forward');
+}
+
+function goBack() {
+  if (current > 0) goTo(current-1,'backward');
+  else if (current === 0) goTo(-1,'backward');
+}
+
+document.getElementById('btn-next').addEventListener('click', goNext);
+document.getElementById('btn-back').addEventListener('click', goBack);
+
+// ═══════════════════════════════════════════════════════════════
+// DETECÇÃO DE ABANDONO — MÚLTIPLAS CAMADAS
+// ═══════════════════════════════════════════════════════════════
+let abandonTimer = null;
+
+function resetAbandonTimer() {
+  if (!answers.whatsapp || formConcluido) return;
+  clearTimeout(abandonTimer);
+  abandonTimer = setTimeout(() => {
+    enviarAbandonoCRM('inatividade_30s');
+  }, 30000);
+}
+
+document.addEventListener('click', resetAbandonTimer);
+document.addEventListener('keydown', resetAbandonTimer);
+document.addEventListener('touchstart', resetAbandonTimer);
+
+// Camada 2: usuário troca de aba ou minimiza
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && answers.whatsapp && !formConcluido) {
+    enviarAbandonoCRM('aba_oculta');
+  }
+});
+
+// Camada 3: usuário fecha a aba ou navega para fora
+window.addEventListener('pagehide', () => {
+  if (answers.whatsapp && !formConcluido) {
+    enviarAbandonoCRM('pagehide', true);
+  }
+});
+
+function enviarAbandonoCRM(motivo, useBeacon = false) {
+  if (!answers.whatsapp || formConcluido) return;
+
+  const etapa = `ABANDONOU (${motivo}) no slide: ${currentId()}`;
+  const payload = montarPayload(etapa, { evento: 'abandon', motivo });
+
+  if (useBeacon && navigator.sendBeacon) {
+    // sendBeacon é o único método garantido durante o fechamento da página
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    navigator.sendBeacon(SHEETS_URL, blob);
+    if (leadCriadoNoKommo) navigator.sendBeacon(KOMMO_WEBHOOK_URL, blob);
+  } else {
+    enviarParaSheets(etapa);
+    if (leadCriadoNoKommo) enviarParaKommo(etapa, 'abandon');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENVIO PARA ATENDLY (mantido)
+// ═══════════════════════════════════════════════════════════════
+async function enviarLeadInicial() {
+  if (!answers.whatsapp) return;
+  try {
+    await fetch(ATHENDLY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome: answers.nome || '',
+        whatsapp: answers.whatsapp.replace(/\D/g,'') || ''
+      })
+    });
+    resetAbandonTimer();
+  } catch(e) { console.warn('Erro lead inicial:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUBMIT FINAL
+// ═══════════════════════════════════════════════════════════════
+async function submitForm() {
+  fbq('trackCustom', 'TypeformSubmit');
+  fbq('trackCustom', 'LeadTypeformProprio');
+  formConcluido = true;
+  clearTimeout(abandonTimer);
+
+  enviarParaSheets('Formulário concluído');
+  enviarParaKommo('Formulário concluído', 'complete');
+
+  // Limpa o LEAD_ID — próxima visita começa fresh
+  localStorage.removeItem('lead_id');
+  localStorage.removeItem('lead_id_created_at');
+
+  const msg = encodeURIComponent('Olá! Quero agendar minha avaliação BRP Face. (Ref: ' + LEAD_ID + ')');
+  document.getElementById('btn-whatsapp').href = `https://wa.me/${WHATSAPP_CLINICA}?text=${msg}`;
+  goTo(current+1,'forward');
+}
+
+updateProgress();
+updateNav();
