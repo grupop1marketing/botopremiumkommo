@@ -699,6 +699,7 @@ function enviarParaKommo(etapa, evento = 'update') {
 
   fetch(KOMMO_WEBHOOK_URL, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
     keepalive: true
   }).then(() => {
